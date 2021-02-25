@@ -16,16 +16,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestClientCheckTagAccess(t *testing.T) {
-	// db, err := sql.Open("mysql", "hmsdev:hmsdev@(hmsdev)/hms?charset=utf8mb4&collation=utf8mb4_unicode_ci")
 	db, err := sql.Open("mysql", "hmsdev:hmsdev@(hmsdev)/hms")
 	require.NoError(t, err)
 	c := &Client{
 		db: db,
 	}
 
-	res, err := c.CheckTagAccess(context.Background(), 1, DoorSideA, "9607166cf0e6342fb7f3")
+	res, err := c.GatekeeperCheckRFID(context.Background(), 1, DoorSideA, "9607166cf0e6342fb7f3")
 	require.NoError(t, err)
 
 	t.Logf("%+v", res)
-	t.Fail()
 }
