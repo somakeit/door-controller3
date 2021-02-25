@@ -1,3 +1,4 @@
+// hms is a library of Go bindings for the hms2 database stored procedures
 package hms
 
 import (
@@ -20,14 +21,18 @@ type Client struct {
 	scope sync.Mutex
 }
 
-// NewClient returns a new HMS2 database Client, scripts is a path to the
-// directory holding the sql scripts.
-func NewClient() (*Client, error) {
-	return &Client{}, nil
+// NewClient returns a new HMS2 database Client, db must be an opened hms2 sql
+// database
+func NewClient(db *sql.DB) (*Client, error) {
+	return &Client{
+		db: db,
+	}, nil
 }
 
-// GatekeeperCheckRFID takes a door ID, a side and a tag serial number then
-// returns GatekeeperCheckRFIDResult including whether access is allowed.
+// GatekeeperCheckRFID checks an rfid serial is valid and if access is allowed.
+// Then logs an entry in the access log (either granted or denied). Then
+// returns whether access was granted and an approprite unlock text in
+// GatekeeperCheckRFIDResult if it is.
 func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int, side DoorSide, tag string) (GatekeeperCheckRFIDResult, error) {
 	var result *sql.Rows
 	if err := func() error {
@@ -89,7 +94,16 @@ func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int, side DoorSid
 	}, nil
 }
 
-// DoorSide is the side of a door, valid valued are DoorSideA and DoorSideB
+// GatekeeperSetZone updates the zone_occupancy table with the new zone the of
+// member, and log an entry to zone_occupancy_log to record what time the
+// previous zone was entered/left
+func (c *Client) GatekeeperSetZone(memberID, newZoneID int32) {
+	if _, err := c.db.Exec("CALL sp_gatekeeper_set_zone(?, ?)", memberID, newZoneID); err != nil {
+		log.Printf("Failed to set mebmer %d to zone %d: %s", memberID, newZoneID, err)
+	}
+}
+
+// DoorSide is the side of a door, valid values are DoorSideA and DoorSideB
 type DoorSide string
 
 const (
@@ -100,7 +114,6 @@ const (
 
 	// access granted is 1 in the stored procedure logic
 	granted = 1
-	denied  = 0
 )
 
 // GatekeeperCheckRFIDResult is the result of checking tag access at a door
