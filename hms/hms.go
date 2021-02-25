@@ -32,8 +32,8 @@ func NewClient(db *sql.DB) (*Client, error) {
 // GatekeeperCheckRFID checks an rfid serial is valid and if access is allowed.
 // Then logs an entry in the access log (either granted or denied). Then
 // returns whether access was granted and an approprite unlock text in
-// GatekeeperCheckRFIDResult if it is.
-func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int, side DoorSide, tag string) (GatekeeperCheckRFIDResult, error) {
+// GatekeeperCheckResult if it is.
+func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int32, side DoorSide, tag string) (GatekeeperCheckResult, error) {
 	var result *sql.Rows
 	if err := func() error {
 		c.scope.Lock()
@@ -58,11 +58,11 @@ func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int, side DoorSid
 
 		return nil
 	}(); err != nil {
-		return GatekeeperCheckRFIDResult{}, err
+		return GatekeeperCheckResult{}, err
 	}
 
 	if !result.Next() {
-		return GatekeeperCheckRFIDResult{}, errors.New("no sp result")
+		return GatekeeperCheckResult{}, errors.New("no sp result")
 	}
 
 	var (
@@ -76,14 +76,14 @@ func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int, side DoorSid
 	)
 	err := result.Scan(&message, &memberName, &lastSeen, &accessGranted, &newZoneID, &memberID, &spErr)
 	if err != nil {
-		return GatekeeperCheckRFIDResult{}, fmt.Errorf("error scanning sp result: %w", err)
+		return GatekeeperCheckResult{}, fmt.Errorf("error scanning sp result: %w", err)
 	}
 
 	if spErr.String != "" {
-		return GatekeeperCheckRFIDResult{}, fmt.Errorf("sp failed: %s", spErr.String)
+		return GatekeeperCheckResult{}, fmt.Errorf("sp failed: %s", spErr.String)
 	}
 
-	return GatekeeperCheckRFIDResult{
+	return GatekeeperCheckResult{
 		// This check on Valid is redundant but I do not want any surprises
 		AccessGranted: accessGranted.Valid && accessGranted.Int32 == granted,
 		LastSeen:      parseDuration(lastSeen),
@@ -103,6 +103,70 @@ func (c *Client) GatekeeperSetZone(memberID, newZoneID int32) {
 	}
 }
 
+// GatekeeperCheckPIN checks a pin is valid and returns an approprite unlock
+// text if it is. If the PIN is found and is set to enroll then the last card
+// read will be registered (if within timeout). If registation is successfull,
+// the pin is considered invalid. In all cases an entry is made in the access
+// log.
+func (c *Client) GatekeeperCheckPIN(ctx context.Context, door int32, side DoorSide, pin string) (GatekeeperCheckResult, error) {
+	var result *sql.Rows
+	if err := func() error {
+		c.scope.Lock()
+		defer c.scope.Unlock()
+
+		_, err := c.db.ExecContext(
+			ctx,
+			`CALL sp_gatekeeper_check_pin(?, ?, ?, @memberID, @newZoneID, @message,
+				@memberName, @spErr)`,
+			pin,
+			door,
+			side,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to execute sp: %w", err)
+		}
+
+		result, err = c.db.QueryContext(ctx, `SELECT @memberID, @newZoneID, @message,
+			@memberName, @spErr`)
+		if err != nil {
+			return fmt.Errorf("failed to select sp result: %w", err)
+		}
+
+		return nil
+	}(); err != nil {
+		return GatekeeperCheckResult{}, err
+	}
+
+	if !result.Next() {
+		return GatekeeperCheckResult{}, errors.New("no sp result")
+	}
+
+	var (
+		memberID   sql.NullInt32
+		newZoneID  sql.NullInt32
+		message    sql.NullString
+		memberName sql.NullString
+		spErr      sql.NullString
+	)
+	if err := result.Scan(&memberID, &newZoneID, &message, &memberName, &spErr); err != nil {
+		return GatekeeperCheckResult{}, fmt.Errorf("error scanning sp result: %w", err)
+	}
+
+	if spErr.String != "" {
+		return GatekeeperCheckResult{}, fmt.Errorf("sp failed: %s", spErr.String)
+	}
+
+	return GatekeeperCheckResult{
+		// No explicit access_granted field on this sp
+		AccessGranted: message.String != "",
+		// No last_seen field on this sp
+		Message:    message.String,
+		MemberID:   memberID.Int32,
+		MemberName: memberName.String,
+		NewZoneID:  newZoneID.Int32,
+	}, nil
+}
+
 // DoorSide is the side of a door, valid values are DoorSideA and DoorSideB
 type DoorSide string
 
@@ -116,8 +180,8 @@ const (
 	granted = 1
 )
 
-// GatekeeperCheckRFIDResult is the result of checking tag access at a door
-type GatekeeperCheckRFIDResult struct {
+// GatekeeperCheckResult is the result of checking tag access at a door
+type GatekeeperCheckResult struct {
 	// AccessGranted indicates whether the door should be opened
 	AccessGranted bool
 	// LastSeen is the time since the tag's owner was seen
