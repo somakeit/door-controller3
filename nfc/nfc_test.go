@@ -57,6 +57,15 @@ func TestGuard(t *testing.T) {
 			wantDenyReason:       admitters.AccessDenied,
 		},
 
+		"tag allowed without message": {
+			// This never happens
+			allow:    true,
+			allowMsg: "",
+
+			wantInterrogatingMsg: "Authorizing tag...",
+			wantAllowMsg:         "Access granted",
+		},
+
 		"error from reader": {
 			readErr: errors.New("timeout"),
 			// Should not do anything

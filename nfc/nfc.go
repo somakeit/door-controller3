@@ -107,16 +107,19 @@ func (g *Guard) guard() error {
 		}
 		return nil
 	}
-	if msg == "" {
-		msg = "Access denied"
-	}
 	if !allowed {
+		if msg == "" {
+			msg = "Access denied"
+		}
 		if err := g.gate.Deny(ctx, msg, admitters.AccessDenied); err != nil {
 			return fmt.Errorf("failed to deny access: %w", err)
 		}
 		return nil
 	}
 
+	if msg == "" {
+		msg = "Access granted"
+	}
 	if err := g.gate.Allow(ctx, msg); err != nil {
 		return fmt.Errorf("failed to allow access: %w", err)
 	}
