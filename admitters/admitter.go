@@ -15,6 +15,9 @@ const (
 	// a tag UID or PIN) on the context passed to the methods in Admitter. It
 	// should not be shown to the admitee.
 	ID contextKey = "uid"
+	// Type is the context key used to store the kind of guard calling the
+	// Admitter
+	Type contextKey = "type"
 )
 
 var (

@@ -13,6 +13,7 @@ import (
 const (
 	defaultReadTimeoutMS = 100
 	defaultAithTimeoutS  = 30
+	guardType            = "nfc"
 )
 
 var (
@@ -80,7 +81,9 @@ func (g *Guard) guard() error {
 	}
 
 	uid := hex.EncodeToString(rawUID)
-	ctx := context.WithValue(context.Background(), admitters.ID, uid)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, admitters.Type, guardType)
+	ctx = context.WithValue(ctx, admitters.ID, uid)
 	ctx, cancel := context.WithTimeout(ctx, g.AuthTimeout)
 
 	g.gate.Interrogating(ctx, "Authorizing tag...")

@@ -77,18 +77,18 @@ func TestGuard(t *testing.T) {
 			readerDobule.On("ReadUID", 100*time.Millisecond).Return(rawUID, test.readErr)
 			authDouble := &testAuth{}
 			authDouble.Test(t)
-			authDouble.On("Allowed", mock.MatchedBy(contextWithUID(t, strUID)), int32(7), "B", strUID).Return(test.allow, test.allowMsg, test.allowErr)
+			authDouble.On("Allowed", mock.MatchedBy(contextWithUIDAndType(t, strUID)), int32(7), "B", strUID).Return(test.allow, test.allowMsg, test.allowErr)
 			mockAdmit := &testAdmit{}
 			mockAdmit.Test(t)
 			defer mockAdmit.AssertExpectations(t)
 			if test.wantInterrogatingMsg != "" {
-				mockAdmit.On("Interrogating", mock.MatchedBy(contextWithUID(t, strUID)), test.wantInterrogatingMsg).Return().Once()
+				mockAdmit.On("Interrogating", mock.MatchedBy(contextWithUIDAndType(t, strUID)), test.wantInterrogatingMsg).Return().Once()
 			}
 			if test.wantAllowMsg != "" {
-				mockAdmit.On("Allow", mock.MatchedBy(contextWithUID(t, strUID)), test.wantAllowMsg).Return(nil).Once()
+				mockAdmit.On("Allow", mock.MatchedBy(contextWithUIDAndType(t, strUID)), test.wantAllowMsg).Return(nil).Once()
 			}
 			if test.wantDenyMsg != "" {
-				mockAdmit.On("Deny", mock.MatchedBy(contextWithUID(t, strUID)), test.wantDenyMsg, test.wantDenyReason).Return(nil).Once()
+				mockAdmit.On("Deny", mock.MatchedBy(contextWithUIDAndType(t, strUID)), test.wantDenyMsg, test.wantDenyReason).Return(nil).Once()
 			}
 
 			nfc, err := New(7, "B", readerDobule, authDouble, mockAdmit)
@@ -231,9 +231,13 @@ func (a *testAdmit) Allow(ctx context.Context, msg string) error {
 	return a.Called(ctx, msg).Error(0)
 }
 
-func contextWithUID(t *testing.T, uid string) func(ctx context.Context) bool {
+func contextWithUIDAndType(t *testing.T, uid string) func(ctx context.Context) bool {
 	return func(ctx context.Context) bool {
 		got := ctx.Value(admitters.ID)
-		return assert.Equal(t, uid, got, "Context missing expected ID, got '%s' but wanted '%s'", got, uid)
+		if !assert.Equal(t, uid, got, "Context missing expected ID, got '%s' but wanted '%s'", got, uid) {
+			return false
+		}
+		got = ctx.Value(admitters.Type)
+		return assert.Equal(t, guardType, got, "Context missing expected Type, got '%s' but wanted '%s'", got, guardType)
 	}
 }
