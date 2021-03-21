@@ -37,7 +37,6 @@ type Admitter interface {
 	// or if authorizarion failed, the actual error.
 	Deny(ctx context.Context, message string, reason error) error
 	// Allow is called if an authorization attempt was successful and the
-	// admitee should be allowed in. The context will contain the ID value and
-	// may already be cancelled.
+	// admitee should be allowed in. The context will contain the ID value.
 	Allow(ctx context.Context, message string) error
 }
