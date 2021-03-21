@@ -28,7 +28,6 @@ func TestGuard(t *testing.T) {
 		wantAllowMsg         string
 		wantDenyMsg          string
 		wantDenyReason       error
-		wantErr              string
 	}{
 		"tag allowed": {
 			allow:    true,
@@ -95,13 +94,7 @@ func TestGuard(t *testing.T) {
 			nfc, err := New(7, "B", readerDobule, authDouble, mockAdmit)
 			require.NoError(t, err)
 
-			err = nfc.guard()
-			if test.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), test.wantErr)
-			} else {
-				require.NoError(t, err)
-			}
+			require.NoError(t, nfc.guard())
 		})
 	}
 }
@@ -129,7 +122,7 @@ func TestGuardFatal(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			readerDobule := &testNFC{}
 			readerDobule.Test(t)
-			readerDobule.On("ReadUID", 100*time.Millisecond).Return(rawUID, nil)
+			readerDobule.On("ReadUID", mock.Anything).Return(rawUID, nil)
 			admitDouble := &testAdmit{}
 			admitDouble.Test(t)
 			admitDouble.On("Interrogating", mock.Anything, mock.Anything).Return()

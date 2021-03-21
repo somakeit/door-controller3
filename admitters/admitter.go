@@ -12,7 +12,8 @@ type contextKey string
 
 const (
 	// ID is context key used to store the identifier of the atmittee (such as
-	// a tag UID or PIN) on the context passed to the methods in Admitter.
+	// a tag UID or PIN) on the context passed to the methods in Admitter. It
+	// should not be shown to the admitee.
 	ID contextKey = "uid"
 )
 
@@ -36,7 +37,7 @@ type Admitter interface {
 	// or if authorizarion failed, the actual error.
 	Deny(ctx context.Context, message string, reason error) error
 	// Allow is called if an authorization attempt was successful and the
-	// admittee should be allowed in. The context will contain the ID value and
+	// admitee should be allowed in. The context will contain the ID value and
 	// may already be cancelled.
 	Allow(ctx context.Context, message string) error
 }
