@@ -44,7 +44,7 @@ func TestGuard(t *testing.T) {
 
 			wantInterrogatingMsg: "Authorizing tag...",
 			wantDenyMsg:          "Unknown tag",
-			wantDenyReason:       AccessDenied,
+			wantDenyReason:       admitters.AccessDenied,
 		},
 
 		"tag denied without message": {
@@ -54,7 +54,7 @@ func TestGuard(t *testing.T) {
 
 			wantInterrogatingMsg: "Authorizing tag...",
 			wantDenyMsg:          "Access denied",
-			wantDenyReason:       AccessDenied,
+			wantDenyReason:       admitters.AccessDenied,
 		},
 
 		"error from reader": {

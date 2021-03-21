@@ -3,7 +3,6 @@ package nfc
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
@@ -14,11 +13,6 @@ const (
 	defaultReadTimeoutMS = 100
 	defaultAithTimeoutS  = 30
 	guardType            = "nfc"
-)
-
-var (
-	// AccessDenied is the reason error used if access was denied
-	AccessDenied = errors.New("access denied")
 )
 
 // UIDReader is any NFC/RFIC reader that Guard can poll for tag UIDs
@@ -117,7 +111,7 @@ func (g *Guard) guard() error {
 		msg = "Access denied"
 	}
 	if !allowed {
-		if err := g.gate.Deny(ctx, msg, AccessDenied); err != nil {
+		if err := g.gate.Deny(ctx, msg, admitters.AccessDenied); err != nil {
 			return fmt.Errorf("failed to deny access: %w", err)
 		}
 		return nil
