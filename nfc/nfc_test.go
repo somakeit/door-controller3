@@ -144,13 +144,66 @@ func TestGuardFatal(t *testing.T) {
 	}
 }
 
+func TestGuardUserCancel(t *testing.T) {
+	for name, test := range map[string]struct {
+		secondTag []byte
+	}{
+		"cancel because tag removed": {
+			secondTag: nil,
+		},
+
+		"cancel because tag replaced": {
+			secondTag: []byte{0x00, 0x01, 0xf4, 0xa9},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			readerDobule := &testNFC{}
+			readerDobule.Test(t)
+			readerDobule.On("ReadUID", mock.Anything).Return(rawUID, nil).Once()
+			if test.secondTag != nil {
+				readerDobule.On("ReadUID", mock.Anything).Return(test.secondTag, nil)
+			} else {
+				readerDobule.On("ReadUID", mock.Anything).After(100*time.Millisecond).Return(nil, errors.New("timeout"))
+			}
+			mockAdmit := &testAdmit{}
+			mockAdmit.Test(t)
+			mockAdmit.AssertExpectations(t)
+			var ctx context.Context
+			mockAdmit.On("Interrogating", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				ctx = args.Get(0).(context.Context)
+			}).Return()
+			mockAdmit.On("Deny", mock.Anything, "Error", errors.New("context cancelled")).Return(nil)
+			authDouble := &testAuth{}
+			authDouble.Test(t)
+			authDouble.On("Allowed", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+				select {
+				case <-ctx.Done():
+				case <-time.After(3 * time.Second):
+					t.Error("Expected context to be cancelled but it was not")
+				}
+			}).Return(false, "", errors.New("context cancelled"))
+
+			nfc := &Guard{
+				reader:      readerDobule,
+				auth:        authDouble,
+				gate:        mockAdmit,
+				ReadTimeout: 100 * time.Millisecond,
+				AuthTimeout: 30 * time.Second,
+			}
+
+			require.NoError(t, nfc.guard())
+		})
+	}
+}
+
 type testNFC struct {
 	mock.Mock
 }
 
 func (n *testNFC) ReadUID(timeout time.Duration) ([]byte, error) {
 	args := n.Called(timeout)
-	return args.Get(0).([]byte), args.Error(1)
+	b, _ := args.Get(0).([]byte)
+	return b, args.Error(1)
 }
 
 type testAuth struct {

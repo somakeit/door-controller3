@@ -82,9 +82,26 @@ func (g *Guard) guard() error {
 	uid := hex.EncodeToString(rawUID)
 	ctx := context.WithValue(context.Background(), admitters.ID, uid)
 	ctx, cancel := context.WithTimeout(ctx, g.AuthTimeout)
-	defer cancel()
 
 	g.gate.Interrogating(ctx, "Authorizing tag...")
+
+	// If the admitee pulls their tag off the reader; cancel the context
+	bgScan := make(chan struct{})
+	defer func() { <-bgScan }()
+	defer cancel()
+	go func() {
+		defer close(bgScan)
+
+		for {
+			if ctx.Err() != nil {
+				break
+			}
+			rawUID, err := g.reader.ReadUID(g.ReadTimeout)
+			if err != nil || uid != hex.EncodeToString(rawUID) {
+				cancel()
+			}
+		}
+	}()
 
 	allowed, msg, err := g.auth.Allowed(ctx, g.door, g.side, uid)
 	if err != nil {
