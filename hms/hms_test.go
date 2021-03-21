@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -519,10 +520,11 @@ func TestGatekeeperSetZone(t *testing.T) {
 }
 
 func TestGatekeeperCheckRFIDReal(t *testing.T) {
-	db, err := sql.Open("mysql", "hmsdev:hmsdev@(hmsdev)/hms")
-	if err != nil {
-		t.Skip("No database found: ", err)
+	if _, err := net.LookupHost("hmsdev"); err != nil {
+		t.Skip("No database found:", err)
 	}
+	db, err := sql.Open("mysql", "hmsdev:hmsdev@(hmsdev)/hms")
+	require.NoError(t, err)
 
 	c, err := NewClient(db)
 	require.NoError(t, err)
