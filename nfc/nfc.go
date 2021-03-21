@@ -76,6 +76,8 @@ func (g *Guard) guard() error {
 
 	uid := hex.EncodeToString(rawUID)
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, admitters.Door, g.door)
+	ctx = context.WithValue(ctx, admitters.Side, g.side)
 	ctx = context.WithValue(ctx, admitters.Type, guardType)
 	ctx = context.WithValue(ctx, admitters.ID, uid)
 	ctx, cancel := context.WithTimeout(ctx, g.AuthTimeout)

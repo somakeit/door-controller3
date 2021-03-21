@@ -18,6 +18,12 @@ const (
 	// Type is the context key used to store the kind of guard calling the
 	// Admitter
 	Type contextKey = "type"
+	// Door is the context key used to store the door ID of the guard calling
+	// the Admitter
+	Door contextKey = "door"
+	// Side is the context key used to store the door side of the guard calling
+	// the Admitter
+	Side contextKey = "side"
 )
 
 var (

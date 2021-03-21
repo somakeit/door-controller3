@@ -35,7 +35,6 @@ func TestGuard(t *testing.T) {
 
 			wantInterrogatingMsg: "Authorizing tag...",
 			wantAllowMsg:         "Welcome back Bracken",
-			// TODO test side in context
 		},
 
 		"tag denied": {
@@ -86,18 +85,18 @@ func TestGuard(t *testing.T) {
 			readerDobule.On("ReadUID", 100*time.Millisecond).Return(rawUID, test.readErr)
 			authDouble := &testAuth{}
 			authDouble.Test(t)
-			authDouble.On("Allowed", mock.MatchedBy(contextWithUIDAndType(t, strUID)), int32(7), "B", strUID).Return(test.allow, test.allowMsg, test.allowErr)
+			authDouble.On("Allowed", mock.MatchedBy(contextWithUIDAndFields(t, strUID)), int32(7), "B", strUID).Return(test.allow, test.allowMsg, test.allowErr)
 			mockAdmit := &testAdmit{}
 			mockAdmit.Test(t)
 			defer mockAdmit.AssertExpectations(t)
 			if test.wantInterrogatingMsg != "" {
-				mockAdmit.On("Interrogating", mock.MatchedBy(contextWithUIDAndType(t, strUID)), test.wantInterrogatingMsg).Return().Once()
+				mockAdmit.On("Interrogating", mock.MatchedBy(contextWithUIDAndFields(t, strUID)), test.wantInterrogatingMsg).Return().Once()
 			}
 			if test.wantAllowMsg != "" {
-				mockAdmit.On("Allow", mock.MatchedBy(contextWithUIDAndType(t, strUID)), test.wantAllowMsg).Return(nil).Once()
+				mockAdmit.On("Allow", mock.MatchedBy(contextWithUIDAndFields(t, strUID)), test.wantAllowMsg).Return(nil).Once()
 			}
 			if test.wantDenyMsg != "" {
-				mockAdmit.On("Deny", mock.MatchedBy(contextWithUIDAndType(t, strUID)), test.wantDenyMsg, test.wantDenyReason).Return(nil).Once()
+				mockAdmit.On("Deny", mock.MatchedBy(contextWithUIDAndFields(t, strUID)), test.wantDenyMsg, test.wantDenyReason).Return(nil).Once()
 			}
 
 			nfc, err := New(7, "B", readerDobule, authDouble, mockAdmit)
@@ -240,9 +239,17 @@ func (a *testAdmit) Allow(ctx context.Context, msg string) error {
 	return a.Called(ctx, msg).Error(0)
 }
 
-func contextWithUIDAndType(t *testing.T, uid string) func(ctx context.Context) bool {
+func contextWithUIDAndFields(t *testing.T, uid string) func(ctx context.Context) bool {
 	return func(ctx context.Context) bool {
-		got := ctx.Value(admitters.ID)
+		got := ctx.Value(admitters.Door)
+		if !assert.Equal(t, int32(7), got, "Context missing expected Door, got '%s' but wanted '%s'", got, int32(7)) {
+			return false
+		}
+		got = ctx.Value(admitters.Side)
+		if !assert.Equal(t, "B", got, "Context missing expected Side, got '%s' but wanted '%s'", got, "B") {
+			return false
+		}
+		got = ctx.Value(admitters.ID)
 		if !assert.Equal(t, uid, got, "Context missing expected ID, got '%s' but wanted '%s'", got, uid) {
 			return false
 		}
