@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/somakeit/door-controller3/admitters"
+	"github.com/somakeit/door-controller3/admitter"
 )
 
 const (
@@ -32,7 +32,7 @@ type Guard struct {
 	side   string
 	reader UIDReader
 	auth   Authorizer
-	gate   admitters.Admitter
+	gate   admitter.Admitter
 
 	// ReadTimeout is the time given to read a UID from the UIDReader, the
 	// default is 100 milliseconds.
@@ -45,7 +45,7 @@ type Guard struct {
 
 // New returs a new Guard, door is the id of this door, side of door is usually
 // "A" or "B", reader is an instance of an NFC/RFID reader.
-func New(door int32, side string, reader UIDReader, authority Authorizer, gate admitters.Admitter) (*Guard, error) {
+func New(door int32, side string, reader UIDReader, authority Authorizer, gate admitter.Admitter) (*Guard, error) {
 	return &Guard{
 		door:        door,
 		side:        side,
@@ -76,10 +76,10 @@ func (g *Guard) guard() error {
 
 	uid := hex.EncodeToString(rawUID)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, admitters.Door, g.door)
-	ctx = context.WithValue(ctx, admitters.Side, g.side)
-	ctx = context.WithValue(ctx, admitters.Type, guardType)
-	ctx = context.WithValue(ctx, admitters.ID, uid)
+	ctx = context.WithValue(ctx, admitter.Door, g.door)
+	ctx = context.WithValue(ctx, admitter.Side, g.side)
+	ctx = context.WithValue(ctx, admitter.Type, guardType)
+	ctx = context.WithValue(ctx, admitter.ID, uid)
 	ctx, cancel := context.WithTimeout(ctx, g.AuthTimeout)
 
 	g.gate.Interrogating(ctx, "Authorizing tag...")
@@ -113,7 +113,7 @@ func (g *Guard) guard() error {
 		if msg == "" {
 			msg = "Access denied"
 		}
-		if err := g.gate.Deny(ctx, msg, admitters.AccessDenied); err != nil {
+		if err := g.gate.Deny(ctx, msg, admitter.AccessDenied); err != nil {
 			return fmt.Errorf("failed to deny access: %w", err)
 		}
 		return nil

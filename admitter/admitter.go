@@ -1,7 +1,7 @@
 // Admitters are packages which impliment the consequences of granted or
 // rejected authorization attmpets, such as; unlocking a strike, blinking an
 // LED, or logging a message.
-package admitters
+package admitter
 
 import (
 	"context"
@@ -48,4 +48,32 @@ type Admitter interface {
 	// Allow is called if an authorization attempt was successful and the
 	// admitee should be allowed in. The context will contain the ID value.
 	Allow(ctx context.Context, message string) error
+}
+
+// Mux is a container for multiple Admitters, each is called sequentially in
+// order.
+type Mux []Admitter
+
+func (m Mux) Interrogating(ctx context.Context, message string) {
+	for _, a := range m {
+		a.Interrogating(ctx, message)
+	}
+}
+
+func (m Mux) Deny(ctx context.Context, message string, reason error) error {
+	for _, a := range m {
+		if err := a.Deny(ctx, message, reason); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m Mux) Allow(ctx context.Context, message string) error {
+	for _, a := range m {
+		if err := a.Allow(ctx, message); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/somakeit/door-controller3/admitters"
+	"github.com/somakeit/door-controller3/admitter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestGuard(t *testing.T) {
 
 			wantInterrogatingMsg: "Authorizing tag...",
 			wantDenyMsg:          "Unknown tag",
-			wantDenyReason:       admitters.AccessDenied,
+			wantDenyReason:       admitter.AccessDenied,
 		},
 
 		"tag denied without message": {
@@ -53,7 +53,7 @@ func TestGuard(t *testing.T) {
 
 			wantInterrogatingMsg: "Authorizing tag...",
 			wantDenyMsg:          "Access denied",
-			wantDenyReason:       admitters.AccessDenied,
+			wantDenyReason:       admitter.AccessDenied,
 		},
 
 		"tag allowed without message": {
@@ -238,19 +238,19 @@ func (a *testAdmit) Allow(ctx context.Context, msg string) error {
 
 func contextWithUIDAndFields(t *testing.T, uid string) func(ctx context.Context) bool {
 	return func(ctx context.Context) bool {
-		got := ctx.Value(admitters.Door)
+		got := ctx.Value(admitter.Door)
 		if !assert.Equal(t, int32(7), got, "Context missing expected Door, got '%s' but wanted '%s'", got, int32(7)) {
 			return false
 		}
-		got = ctx.Value(admitters.Side)
+		got = ctx.Value(admitter.Side)
 		if !assert.Equal(t, "B", got, "Context missing expected Side, got '%s' but wanted '%s'", got, "B") {
 			return false
 		}
-		got = ctx.Value(admitters.ID)
+		got = ctx.Value(admitter.ID)
 		if !assert.Equal(t, uid, got, "Context missing expected ID, got '%s' but wanted '%s'", got, uid) {
 			return false
 		}
-		got = ctx.Value(admitters.Type)
+		got = ctx.Value(admitter.Type)
 		return assert.Equal(t, guardType, got, "Context missing expected Type, got '%s' but wanted '%s'", got, guardType)
 	}
 }
