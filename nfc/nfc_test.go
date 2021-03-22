@@ -176,16 +176,13 @@ func TestGuardUserCancel(t *testing.T) {
 			mockAdmit := &testAdmit{}
 			mockAdmit.Test(t)
 			mockAdmit.AssertExpectations(t)
-			var ctx context.Context
-			mockAdmit.On("Interrogating", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-				ctx = args.Get(0).(context.Context)
-			}).Return()
+			mockAdmit.On("Interrogating", mock.Anything, mock.Anything).Return()
 			mockAdmit.On("Deny", mock.Anything, "Error", errors.New("context cancelled")).Return(nil)
 			authDouble := &testAuth{}
 			authDouble.Test(t)
-			authDouble.On("Allowed", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+			authDouble.On("Allowed", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 				select {
-				case <-ctx.Done():
+				case <-args.Get(0).(context.Context).Done():
 				case <-time.After(3 * time.Second):
 					t.Error("Expected context to be cancelled but it was not")
 				}
