@@ -2,7 +2,7 @@ package strike
 
 import (
 	"context"
-	"errors"
+	"runtime"
 	"testing"
 	"time"
 
@@ -29,7 +29,6 @@ func TestStrikeAllow(t *testing.T) {
 	for name, test := range map[string]struct {
 		calls             int
 		openErr, closeErr error
-		wantErr           bool
 	}{
 		"allowed once": {
 			calls: 1,
@@ -37,18 +36,6 @@ func TestStrikeAllow(t *testing.T) {
 
 		"allowed concurrently": {
 			calls: 2,
-		},
-
-		"failed open": {
-			calls:   1,
-			openErr: errors.New("io error"),
-			wantErr: true,
-		},
-
-		"failed close": {
-			calls:    1,
-			closeErr: errors.New("io error"),
-			wantErr:  true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -70,10 +57,23 @@ func TestStrikeAllow(t *testing.T) {
 				Logic:   ActiveHigh,
 			}
 
+			start := time.Now()
 			for i := 0; i < test.calls; i++ {
-				err := s.Allow(context.Background(), "Welcome back Bracken")
-				require.Equal(t, test.wantErr, err != nil, "wantErr=%t, err=%v", test.wantErr, err)
+				require.NoError(t, s.Allow(context.Background(), "Welcome back Bracken"))
 			}
+
+			for {
+				if time.Since(start) > time.Second {
+					t.Errorf("not all async calls were made within timeout: %v", mockStrike.Calls)
+					break
+				}
+				if len(mockStrike.Calls) == 2*test.calls {
+					break
+				}
+				runtime.Gosched()
+			}
+			total := time.Since(start)
+			require.Less(t, total, 150*time.Millisecond, "Unlocks were not handled concurrently, total=%s", total)
 		})
 	}
 }

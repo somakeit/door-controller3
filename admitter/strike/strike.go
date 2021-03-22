@@ -4,7 +4,6 @@ package strike
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -53,23 +52,23 @@ func (s *Strike) Interrogating(context.Context, string) {}
 // Deny has no effect on a strike
 func (s *Strike) Deny(context.Context, string, error) error { return nil }
 
-// Allow will open the strike for Strike.OpenTime
+// Allow will open the strike for Strike.OpenTime.
 func (s *Strike) Allow(ctx context.Context, msg string) error {
-	timer := time.After(s.OpenFor)
-	s.mux.Lock()
-	defer s.mux.Unlock()
+	go func() {
+		timer := time.After(s.OpenFor)
+		s.mux.Lock()
+		defer s.mux.Unlock()
 
-	if err := s.pin.Out(s.Logic[true]); err != nil {
-		// Try to lock the door even though I/O apparently failed
-		errS := s.pin.Out(s.Logic[false])
-		return fmt.Errorf("failed to unlock strike: %w (safety lock: %s)", err, errS)
-	}
+		if err := s.pin.Out(s.Logic[true]); err != nil {
+			// TODO log errs
+		}
 
-	<-timer
+		<-timer
 
-	if err := s.pin.Out(s.Logic[false]); err != nil {
-		return fmt.Errorf("failed to lock strike: %w", err)
-	}
+		if err := s.pin.Out(s.Logic[false]); err != nil {
+			// TODO log err
+		}
 
+	}()
 	return nil
 }
