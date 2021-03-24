@@ -2,6 +2,7 @@ package hms
 
 import (
 	"context"
+	"time"
 
 	"github.com/somakeit/door-controller3/nfc"
 )
@@ -14,5 +15,16 @@ func (c *Client) Allowed(ctx context.Context, door int32, side, id string) (allo
 	if err != nil {
 		return false, "", err
 	}
+
+	// As there is currently no door sensor, update the member location
+	// directly after auth
+	if res.AccessGranted {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			c.GatekeeperSetZone(ctx, res.MemberID, res.NewZoneID)
+		}()
+	}
+
 	return res.AccessGranted, res.Message, nil
 }
