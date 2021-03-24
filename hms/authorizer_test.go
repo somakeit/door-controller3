@@ -6,9 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/somakeit/door-controller3/nfc"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
+
+var _ nfc.Authorizer = &Client{}
 
 func TestAuthorized(t *testing.T) {
 	for name, test := range map[string]struct {

@@ -3,11 +3,7 @@ package hms
 import (
 	"context"
 	"time"
-
-	"github.com/somakeit/door-controller3/nfc"
 )
-
-var _ nfc.Authorizer = &Client{}
 
 // Allowed makes hms into an nfc.Authorizer
 func (c *Client) Allowed(ctx context.Context, door int32, side, id string) (allowed bool, message string, err error) {
