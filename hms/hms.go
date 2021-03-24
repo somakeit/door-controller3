@@ -16,7 +16,7 @@ import (
 var Logger ContextLogger = logDiscarder{}
 
 // ContextLogger is an interface which allows you to use any logger and include
-// context filds.
+// context fields.
 type ContextLogger interface {
 	Warn(ctx context.Context, args ...interface{})
 	Warnf(ctx context.Context, args ...interface{})

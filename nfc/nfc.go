@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultReadTimeoutMS = 100
-	defaultAithTimeoutS  = 30
+	defaultAuthTimeoutS  = 30
 	guardType            = "nfc"
 )
 
@@ -53,7 +53,7 @@ func New(door int32, side string, reader UIDReader, authority Authorizer, gate a
 		auth:        authority,
 		gate:        gate,
 		ReadTimeout: defaultReadTimeoutMS * time.Millisecond,
-		AuthTimeout: defaultAithTimeoutS * time.Second,
+		AuthTimeout: defaultAuthTimeoutS * time.Second,
 	}, nil
 }
 

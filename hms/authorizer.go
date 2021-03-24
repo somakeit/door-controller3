@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+const (
+	setZoneTimeoutS = 30
+)
+
 // Allowed makes hms into an nfc.Authorizer
 func (c *Client) Allowed(ctx context.Context, door int32, side, id string) (allowed bool, message string, err error) {
 	res, err := c.GatekeeperCheckRFID(ctx, door, side, id)
@@ -16,7 +20,7 @@ func (c *Client) Allowed(ctx context.Context, door int32, side, id string) (allo
 	// directly after auth
 	if res.AccessGranted {
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), setZoneTimeoutS*time.Second)
 			defer cancel()
 			c.GatekeeperSetZone(ctx, res.MemberID, res.NewZoneID)
 		}()
