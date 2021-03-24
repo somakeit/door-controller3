@@ -19,6 +19,20 @@ type Pin interface {
 	Out(gpio.Level) error
 }
 
+// Logger can be used to interface any logger to this package, by default
+// it discards all logs
+var Logger ContextLogger = logDiscarder{}
+
+// ContextLogger is an interface which allows you to use any logger and include
+// context filds.
+type ContextLogger interface {
+	Warn(ctx context.Context, args ...interface{})
+}
+
+type logDiscarder struct{}
+
+func (logDiscarder) Warn(context.Context, ...interface{}) {}
+
 // LogicLevel is used to indicate the intent of the Pin, true is active
 type LogicLevel map[bool]gpio.Level
 
@@ -60,13 +74,13 @@ func (s *Strike) Allow(ctx context.Context, msg string) error {
 		defer s.mux.Unlock()
 
 		if err := s.pin.Out(s.Logic[true]); err != nil {
-			// TODO log errs
+			Logger.Warn(ctx, "Failed to unlock door: ", err)
 		}
 
 		<-timer
 
 		if err := s.pin.Out(s.Logic[false]); err != nil {
-			// TODO log err
+			Logger.Warn(ctx, "Failed to lock door: ", err)
 		}
 
 	}()
