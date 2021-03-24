@@ -514,7 +514,7 @@ func TestGatekeeperSetZone(t *testing.T) {
 
 			c, err := NewClient(db)
 			require.NoError(t, err)
-			c.GatekeeperSetZone(test.member, test.zone)
+			c.GatekeeperSetZone(context.Background(), test.member, test.zone)
 		})
 	}
 }
@@ -532,7 +532,7 @@ func TestGatekeeperCheckRFIDReal(t *testing.T) {
 	res, err := c.GatekeeperCheckRFID(context.Background(), 1, DoorSideA, "9607166cf0e6342fb7f3")
 	require.NoError(t, err)
 	if res.AccessGranted {
-		c.GatekeeperSetZone(res.MemberID, res.NewZoneID)
+		c.GatekeeperSetZone(context.Background(), res.MemberID, res.NewZoneID)
 	}
 
 	t.Logf("%+v", res)

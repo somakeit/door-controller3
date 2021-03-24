@@ -6,11 +6,26 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
 )
+
+// Logger can be used to interface any logger to this package, by default
+// it discards all logs
+var Logger ContextLogger = logDiscarder{}
+
+// ContextLogger is an interface which allows you to use any logger and include
+// context filds.
+type ContextLogger interface {
+	Warn(ctx context.Context, args ...interface{})
+	Warnf(ctx context.Context, args ...interface{})
+}
+
+type logDiscarder struct{}
+
+func (logDiscarder) Warn(context.Context, ...interface{})  {}
+func (logDiscarder) Warnf(context.Context, ...interface{}) {}
 
 // Client provides methods for interfacing with the HMS2 databse
 type Client struct {
@@ -86,7 +101,7 @@ func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int32, side DoorS
 	return GatekeeperCheckResult{
 		// This check on Valid is redundant but I do not want any surprises
 		AccessGranted: accessGranted.Valid && accessGranted.Int32 == granted,
-		LastSeen:      parseDuration(lastSeen),
+		LastSeen:      parseDuration(ctx, lastSeen),
 		Message:       message.String,
 		MemberID:      memberID.Int32,
 		MemberName:    memberName.String,
@@ -97,9 +112,9 @@ func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int32, side DoorS
 // GatekeeperSetZone updates the zone_occupancy table with the new zone the of
 // member, and log an entry to zone_occupancy_log to record what time the
 // previous zone was entered/left
-func (c *Client) GatekeeperSetZone(memberID, newZoneID int32) {
+func (c *Client) GatekeeperSetZone(ctx context.Context, memberID, newZoneID int32) {
 	if _, err := c.db.Exec("CALL sp_gatekeeper_set_zone(?, ?)", memberID, newZoneID); err != nil {
-		log.Printf("Failed to set mebmer %d to zone %d: %s", memberID, newZoneID, err)
+		Logger.Warnf(ctx, "Failed to set mebmer %d to zone %d: %s", memberID, newZoneID, err)
 	}
 }
 
@@ -197,14 +212,14 @@ type GatekeeperCheckResult struct {
 	NewZoneID int32
 }
 
-func parseDuration(t sql.NullString) time.Duration {
+func parseDuration(ctx context.Context, t sql.NullString) time.Duration {
 	if !t.Valid {
 		return 0
 	}
 
 	d, err := time.ParseDuration(strings.ReplaceAll(t.String, " ", ""))
 	if err != nil {
-		log.Print("Failed to parse duration: ", err)
+		Logger.Warn(ctx, "Failed to parse duration: ", err)
 		return 0
 	}
 
