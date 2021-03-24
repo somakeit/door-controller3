@@ -16,7 +16,7 @@ import (
 func TestGateKeeperCheckRFID(t *testing.T) {
 	for name, test := range map[string]struct {
 		door int32
-		side DoorSide
+		side string
 		tag  string
 
 		rows              []*sqlmock.Rows
@@ -281,7 +281,7 @@ func TestGateKeeperCheckRFID(t *testing.T) {
 func TestGateKeeperCheckPIN(t *testing.T) {
 	for name, test := range map[string]struct {
 		door int32
-		side DoorSide
+		side string
 		pin  string
 
 		rows              []*sqlmock.Rows

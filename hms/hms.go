@@ -48,7 +48,7 @@ func NewClient(db *sql.DB) (*Client, error) {
 // Then logs an entry in the access log (either granted or denied). Then
 // returns whether access was granted and an approprite unlock text in
 // GatekeeperCheckResult if it is.
-func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int32, side DoorSide, tag string) (GatekeeperCheckResult, error) {
+func (c *Client) GatekeeperCheckRFID(ctx context.Context, door int32, side, tag string) (GatekeeperCheckResult, error) {
 	var result *sql.Rows
 	if err := func() error {
 		c.scope.Lock()
@@ -123,7 +123,7 @@ func (c *Client) GatekeeperSetZone(ctx context.Context, memberID, newZoneID int3
 // read will be registered (if within timeout). If registation is successfull,
 // the pin is considered invalid. In all cases an entry is made in the access
 // log.
-func (c *Client) GatekeeperCheckPIN(ctx context.Context, door int32, side DoorSide, pin string) (GatekeeperCheckResult, error) {
+func (c *Client) GatekeeperCheckPIN(ctx context.Context, door int32, side, pin string) (GatekeeperCheckResult, error) {
 	var result *sql.Rows
 	if err := func() error {
 		c.scope.Lock()
@@ -182,14 +182,11 @@ func (c *Client) GatekeeperCheckPIN(ctx context.Context, door int32, side DoorSi
 	}, nil
 }
 
-// DoorSide is the side of a door, valid values are DoorSideA and DoorSideB
-type DoorSide string
-
 const (
 	// DoorSideA is usually outide
-	DoorSideA DoorSide = "A"
+	DoorSideA = "A"
 	// DoorSideB is usually inside
-	DoorSideB DoorSide = "B"
+	DoorSideB = "B"
 
 	// access granted is 1 in the stored procedure logic
 	granted = 1
