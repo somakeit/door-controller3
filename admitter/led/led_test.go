@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/somakeit/door-controller3/admitter"
 	"github.com/stretchr/testify/mock"
 	"periph.io/x/conn/v3/gpio"
 )
@@ -106,6 +107,10 @@ func TestLED(t *testing.T) {
 			l.lastDeny = time.Now().Add(-time.Hour)
 		})
 	}
+}
+
+func TestLEDIsAdmitter(t *testing.T) {
+	var _ admitter.Admitter = &LED{}
 }
 
 type LEDmock struct {
