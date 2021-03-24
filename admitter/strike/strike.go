@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"periph.io/x/periph/conn/gpio"
+	"periph.io/x/conn/v3/gpio"
 )
 
 const (
