@@ -248,7 +248,7 @@ func TestGateKeeperCheckRFID(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
-			defer require.NoError(t, mock.ExpectationsWereMet())
+			defer func() { require.NoError(t, mock.ExpectationsWereMet()) }()
 			defer db.Close()
 
 			mock.ExpectExec(`CALL sp_gatekeeper_check_rfid\(\?, \?, \?, @message,
@@ -257,10 +257,12 @@ func TestGateKeeperCheckRFID(t *testing.T) {
 				WithArgs(test.tag, test.door, test.side).
 				WillReturnResult(sqlmock.NewResult(0, 0)).
 				WillReturnError(test.execErr)
-			mock.ExpectQuery(`SELECT @message, @memberName, @lastSeen, @accessGranted,
+			if test.execErr == nil {
+				mock.ExpectQuery(`SELECT @message, @memberName, @lastSeen, @accessGranted,
 				@newZoneID, @memberID, @spErr`).
-				WillReturnRows(test.rows...).
-				WillReturnError(test.queryErr)
+					WillReturnRows(test.rows...).
+					WillReturnError(test.queryErr)
+			}
 
 			c := &Client{db: db}
 			got, err := c.GatekeeperCheckRFID(context.Background(), test.door,
@@ -464,7 +466,7 @@ func TestGateKeeperCheckPIN(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
-			defer require.NoError(t, mock.ExpectationsWereMet())
+			defer func() { require.NoError(t, mock.ExpectationsWereMet()) }()
 			defer db.Close()
 
 			mock.ExpectExec(`CALL sp_gatekeeper_check_pin\(\?, \?, \?, @memberID,
@@ -472,10 +474,12 @@ func TestGateKeeperCheckPIN(t *testing.T) {
 				WithArgs(test.pin, test.door, test.side).
 				WillReturnResult(sqlmock.NewResult(0, 0)).
 				WillReturnError(test.execErr)
-			mock.ExpectQuery(`SELECT @memberID,	@newZoneID, @message, @memberName,
+			if test.execErr == nil {
+				mock.ExpectQuery(`SELECT @memberID,	@newZoneID, @message, @memberName,
 				@spErr`).
-				WillReturnRows(test.rows...).
-				WillReturnError(test.queryErr)
+					WillReturnRows(test.rows...).
+					WillReturnError(test.queryErr)
+			}
 
 			c := &Client{db: db}
 			got, err := c.GatekeeperCheckPIN(context.Background(), test.door,
@@ -504,7 +508,7 @@ func TestGatekeeperSetZone(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err, "this error is surely impossible? %s", err)
-			defer require.NoError(t, mock.ExpectationsWereMet())
+			defer func() { require.NoError(t, mock.ExpectationsWereMet()) }()
 			defer db.Close()
 
 			mock.ExpectExec("CALL sp_gatekeeper_set_zone").
