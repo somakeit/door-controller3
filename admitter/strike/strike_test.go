@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"periph.io/x/periph/conn/gpio"
+	"periph.io/x/conn/v3/gpio"
 )
 
 func TestStrikeIneffs(t *testing.T) {
