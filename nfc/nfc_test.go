@@ -13,8 +13,10 @@ import (
 )
 
 var (
-	strUID = "0001f680"
-	rawUID = []byte{0x00, 0x01, 0xf6, 0x80}
+	strUID    = "0001f680"
+	rawUID    = []byte{0x00, 0x01, 0xf6, 0x80}
+	strAltUID = "0001f4a9"
+	rawAltUID = []byte{0x00, 0x01, 0xf4, 0xa9}
 )
 
 func TestGuard(t *testing.T) {
@@ -161,7 +163,7 @@ func TestGuardUserCancel(t *testing.T) {
 		},
 
 		"cancel because tag replaced": {
-			secondTag: []byte{0x00, 0x01, 0xf4, 0xa9},
+			secondTag: rawAltUID,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -199,6 +201,55 @@ func TestGuardUserCancel(t *testing.T) {
 			require.NoError(t, nfc.guard())
 		})
 	}
+}
+
+func TestGuardDeDupe(t *testing.T) {
+	readerDobule := &testNFC{}
+	readerDobule.Test(t)
+	readerDobule.On("ReadUID", mock.Anything).Return(rawUID, nil)
+
+	authDouble := &testAuth{}
+	authDouble.Test(t)
+	authDouble.On("Allowed", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, "", nil)
+
+	mockAdmit := &testAdmit{}
+	mockAdmit.Test(t)
+
+	nfc, err := New(1, "A", readerDobule, authDouble, mockAdmit)
+	require.NoError(t, err)
+
+	t.Run("first auth succeeds", func(t *testing.T) {
+		defer mockAdmit.AssertExpectations(t)
+		mockAdmit.On("Interrogating", mock.Anything, mock.Anything).Return().Maybe()
+		mockAdmit.On("Allow", mock.Anything, mock.Anything).Return(nil).Once()
+		require.NoError(t, nfc.guard())
+	})
+
+	t.Run("second auth by the same tag is ignored", func(t *testing.T) {
+		defer mockAdmit.AssertExpectations(t)
+		require.NoError(t, nfc.guard())
+	})
+
+	t.Run("same tag is allowed after a gap", func(t *testing.T) {
+		defer mockAdmit.AssertExpectations(t)
+
+		readerDobule.ExpectedCalls = nil
+		readerDobule.On("ReadUID", mock.Anything).Return(nil, errors.New("no tag"))
+		require.NoError(t, nfc.guard())
+
+		readerDobule.ExpectedCalls = nil
+		readerDobule.On("ReadUID", mock.Anything).Return(rawUID, nil)
+		mockAdmit.On("Allow", mock.Anything, mock.Anything).Return(nil).Once()
+		require.NoError(t, nfc.guard())
+	})
+
+	t.Run("different tag is allowed with no gap", func(t *testing.T) {
+		defer mockAdmit.AssertExpectations(t)
+		mockAdmit.On("Allow", mock.Anything, mock.Anything).Return(nil).Once()
+		readerDobule.ExpectedCalls = nil
+		readerDobule.On("ReadUID", mock.Anything).Return(rawAltUID, nil)
+		require.NoError(t, nfc.guard())
+	})
 }
 
 type testNFC struct {

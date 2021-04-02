@@ -30,6 +30,9 @@ func main() {
 
 	log := logrus.StandardLogger()
 	log.Level = logLevel
+	log.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
 	log.Info("Stating test door")
 
 	if _, err := host.Init(); err != nil {

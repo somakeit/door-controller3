@@ -34,6 +34,8 @@ type Guard struct {
 	auth   Authorizer
 	gate   admitter.Admitter
 
+	lastTag string
+
 	// ReadTimeout is the time given to read a UID from the UIDReader, the
 	// default is 100 milliseconds.
 	ReadTimeout time.Duration
@@ -71,10 +73,16 @@ func (g *Guard) guard() error {
 	rawUID, err := g.reader.ReadUID(g.ReadTimeout)
 	if err != nil {
 		// There was no tag, or we couldn't read the tag
+		g.lastTag = ""
 		return nil
 	}
 
 	uid := hex.EncodeToString(rawUID)
+	if uid == g.lastTag {
+		return nil
+	}
+	g.lastTag = uid
+
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, admitter.Door, g.door)
 	ctx = context.WithValue(ctx, admitter.Side, g.side)
