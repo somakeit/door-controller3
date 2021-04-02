@@ -46,11 +46,12 @@ func TestStrikeAllow(t *testing.T) {
 			wantCloseCalls: 2,
 		},
 
-		"returns error if door fails to open": {
-			calls:         1,
-			openErr:       errors.New("io error"),
-			wantOpenCalls: 1,
-			wantErr:       true,
+		"calls fatal if door fails to open": {
+			calls:          1,
+			openErr:        errors.New("io error"),
+			wantOpenCalls:  1,
+			wantCloseCalls: 1, // because testLogger does not panic we expect a call to close
+			wantFatal:      true,
 		},
 
 		"calls fatal if door fails to close": {
@@ -72,8 +73,9 @@ func TestStrikeAllow(t *testing.T) {
 				}()
 			}
 			closeCalls := 0
+			openCalls := 0
 			for i := 0; i < test.wantOpenCalls; i++ {
-				mockStrike.On("Out", gpio.High).Return(test.openErr).Once()
+				mockStrike.On("Out", gpio.High).Return(test.openErr).Run(func(mock.Arguments) { openCalls++ }).Once()
 			}
 			for i := 0; i < test.wantCloseCalls; i++ {
 				mockStrike.On("Out", gpio.Low).Return(test.closeErr).Run(func(mock.Arguments) { closeCalls++ }).Once()
@@ -82,6 +84,7 @@ func TestStrikeAllow(t *testing.T) {
 			mockLogger := &testLogger{}
 			mockLogger.Test(t)
 			mockLogger.AssertExpectations(t)
+			mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 			if test.wantFatal {
 				mockLogger.On("Fatal", mock.Anything, mock.Anything).Return()
 			}
@@ -105,7 +108,7 @@ func TestStrikeAllow(t *testing.T) {
 					t.Errorf("not all async calls were made within timeout: %v", mockStrike.Calls)
 					break
 				}
-				if closeCalls == test.wantCloseCalls {
+				if closeCalls == test.wantCloseCalls && openCalls == test.wantOpenCalls {
 					break
 				}
 				runtime.Gosched()
@@ -135,5 +138,9 @@ type testLogger struct {
 }
 
 func (l *testLogger) Fatal(ctx context.Context, args ...interface{}) {
+	l.Called(ctx, args)
+}
+
+func (l *testLogger) Debug(ctx context.Context, args ...interface{}) {
 	l.Called(ctx, args)
 }

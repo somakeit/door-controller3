@@ -4,7 +4,6 @@ package strike
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -28,11 +27,13 @@ var Logger ContextLogger = logDiscarder{}
 // context filds.
 type ContextLogger interface {
 	Fatal(ctx context.Context, args ...interface{})
+	Debug(ctx context.Context, args ...interface{})
 }
 
 type logDiscarder struct{}
 
 func (logDiscarder) Fatal(context.Context, ...interface{}) { panic("Fatal error in strike") }
+func (logDiscarder) Debug(context.Context, ...interface{}) {}
 
 // LogicLevel is used to indicate the intent of the Pin, true is active
 type LogicLevel map[bool]gpio.Level
@@ -55,7 +56,7 @@ type Strike struct {
 
 func New(strike Pin) *Strike {
 	return &Strike{
-		OpenFor: defaultOpenTimeS,
+		OpenFor: defaultOpenTimeS * time.Second,
 		pin:     strike,
 		Logic:   ActiveHigh,
 	}
@@ -71,16 +72,18 @@ func (s *Strike) Deny(context.Context, string, error) error { return nil }
 func (s *Strike) Allow(ctx context.Context, msg string) error {
 	timer := time.After(s.OpenFor)
 
-	if err := s.pin.Out(s.Logic[true]); err != nil {
-		return fmt.Errorf("failed to unlock door: %w", err)
-	}
-
 	go func() {
 		s.mux.Lock()
 		defer s.mux.Unlock()
 
+		Logger.Debug(ctx, "Opening door")
+		if err := s.pin.Out(s.Logic[true]); err != nil {
+			Logger.Fatal(ctx, "failed to unlock door: %w", err)
+		}
+
 		<-timer
 
+		Logger.Debug(ctx, "Closing door")
 		if err := s.pin.Out(s.Logic[false]); err != nil {
 			Logger.Fatal(ctx, "Failed to lock door: ", err)
 		}
