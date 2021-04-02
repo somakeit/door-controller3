@@ -17,6 +17,14 @@ func (c *ContextLogger) Fatal(ctx context.Context, args ...interface{}) {
 	c.Logger.WithFields(c.fields(ctx)).Fatal(args...)
 }
 
+func (c *ContextLogger) Warn(ctx context.Context, args ...interface{}) {
+	c.Logger.WithFields(c.fields(ctx)).Debug(args...)
+}
+
+func (c *ContextLogger) Warnf(ctx context.Context, args ...interface{}) {
+	c.Logger.WithFields(c.fields(ctx)).Debug(args...)
+}
+
 func (c *ContextLogger) Debug(ctx context.Context, args ...interface{}) {
 	c.Logger.WithFields(c.fields(ctx)).Debug(args...)
 }

@@ -21,7 +21,7 @@ import (
 
 func main() {
 	tags := flag.String("tags", "", "Comma separated list of allowed tags")
-	level := flag.String("loglevel", "warn", "log level (default: warn)")
+	level := flag.String("loglevel", "debug", "log level")
 	flag.Parse()
 	logLevel, err := logrus.ParseLevel(*level)
 	if err != nil {
