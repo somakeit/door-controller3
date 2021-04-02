@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/somakeit/door-controller3/admitter"
+	"github.com/somakeit/door-controller3/auth"
 )
 
 const (
@@ -20,18 +21,12 @@ type UIDReader interface {
 	ReadUID(timeout time.Duration) (uid []byte, err error)
 }
 
-// Authorizer is an instance of the entity that says whether a given identifier
-// is to be granted access or not. Errors from Allowed are non-fatal.
-type Authorizer interface {
-	Allowed(ctx context.Context, door int32, side, id string) (allowed bool, message string, err error)
-}
-
 // Guard is a a door guard for NFC tags
 type Guard struct {
 	door   int32
 	side   string
 	reader UIDReader
-	auth   Authorizer
+	auth   auth.Authorizer
 	gate   admitter.Admitter
 
 	lastTag string
@@ -47,7 +42,7 @@ type Guard struct {
 
 // New returs a new Guard, door is the id of this door, side of door is usually
 // "A" or "B", reader is an instance of an NFC/RFID reader.
-func New(door int32, side string, reader UIDReader, authority Authorizer, gate admitter.Admitter) (*Guard, error) {
+func New(door int32, side string, reader UIDReader, authority auth.Authorizer, gate admitter.Admitter) (*Guard, error) {
 	return &Guard{
 		door:        door,
 		side:        side,
