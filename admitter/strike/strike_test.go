@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"periph.io/x/conn/v3/gpio"
 )
+
+var mockLogger = &testLogger{}
+
+func init() {
+	Logger = mockLogger
+}
 
 func TestStrikeIneffs(t *testing.T) {
 	mockStrike := &testPin{}
@@ -72,24 +79,30 @@ func TestStrikeAllow(t *testing.T) {
 					require.Equal(t, gpio.Low, mockStrike.Calls[len(mockStrike.Calls)-1].Arguments.Get(0))
 				}()
 			}
+			counterMux := sync.Mutex{}
 			closeCalls := 0
 			openCalls := 0
 			for i := 0; i < test.wantOpenCalls; i++ {
-				mockStrike.On("Out", gpio.High).Return(test.openErr).Run(func(mock.Arguments) { openCalls++ }).Once()
+				mockStrike.On("Out", gpio.High).Return(test.openErr).Run(func(mock.Arguments) {
+					counterMux.Lock()
+					defer counterMux.Unlock()
+					openCalls++
+				}).Once()
 			}
 			for i := 0; i < test.wantCloseCalls; i++ {
-				mockStrike.On("Out", gpio.Low).Return(test.closeErr).Run(func(mock.Arguments) { closeCalls++ }).Once()
+				mockStrike.On("Out", gpio.Low).Return(test.closeErr).Run(func(mock.Arguments) {
+					counterMux.Lock()
+					defer counterMux.Unlock()
+					closeCalls++
+				}).Once()
 			}
 
-			mockLogger := &testLogger{}
 			mockLogger.Test(t)
 			mockLogger.AssertExpectations(t)
 			mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 			if test.wantFatal {
 				mockLogger.On("Fatal", mock.Anything, mock.Anything).Return()
 			}
-			defer func(l ContextLogger) { Logger = l }(Logger)
-			Logger = mockLogger
 
 			s := &Strike{
 				OpenFor: 100 * time.Millisecond,
@@ -108,9 +121,12 @@ func TestStrikeAllow(t *testing.T) {
 					t.Errorf("not all async calls were made within timeout: %v", mockStrike.Calls)
 					break
 				}
+				counterMux.Lock()
 				if closeCalls == test.wantCloseCalls && openCalls == test.wantOpenCalls {
+					counterMux.Unlock()
 					break
 				}
+				counterMux.Unlock()
 				runtime.Gosched()
 			}
 			total := time.Since(start)
