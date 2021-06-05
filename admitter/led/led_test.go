@@ -3,129 +3,162 @@ package led
 import (
 	"context"
 	"errors"
-	"runtime"
 	"testing"
 	"time"
 
-	"github.com/somakeit/door-controller3/admitter"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"periph.io/x/conn/v3/gpio"
 )
 
 func TestLED(t *testing.T) {
-	// This test uses one instance of LED because the background thread cannot
-	// be stopped. It is started with a long off heartbeat duration and will
-	// remain idle until each subtest stimulates it. One goroutine will be left
-	// running until all tests in this module complete.
-	defer func(r map[int]blink) { rate = r }(rate)
-	rate = map[int]blink{
-		heartbeat:     {0, time.Hour},
-		interrogating: {time.Millisecond, time.Millisecond},
-		allowed:       {time.Millisecond, 0},
-		denied:        {0, time.Millisecond},
+	type input struct {
+		after time.Duration
+		do    func(*LED)
+		done  bool
 	}
-	defer func(time time.Duration) { allowedTime = time }(allowedTime)
-	allowedTime = time.Millisecond
-	defer func(time time.Duration) { deniedTime = time }(deniedTime)
-	deniedTime = time.Millisecond
-
-	LEDDouble := &LEDstub{}
-	l := New(LEDDouble)
-	for {
-		if LEDDouble.called {
-			break
-		}
-		runtime.Gosched()
-	}
-
 	for name, test := range map[string]struct {
-		calls func(l *LED, m *LEDmock)
+		allowedTime, deniedTime time.Duration
+		rates                   map[int]blink
+		calls                   []gpio.Level
+		inputs                  []input
 	}{
-		"blinks once when allowed": { // as long as allowedTime is smaller than the total allowed blink period.
-			calls: func(l *LED, m *LEDmock) {
-				m.On("Out", gpio.High).Return(nil).Once()
-				m.On("Out", gpio.Low).Return(nil).Once()
-
-				_ = l.Allow(context.Background(), "Welcome back Bracken")
-
-				time.Sleep(50 * time.Millisecond)
+		"blinks when nothing happens": {
+			// twice in 1 second: 0-on, 300-off, 600-on, 900-off...
+			rates: map[int]blink{
+				heartbeat: {on: 300 * time.Millisecond, off: 300 * time.Millisecond},
 			},
+			calls: []gpio.Level{gpio.High, gpio.Low, gpio.High, gpio.Low},
+		},
+
+		"doesn't blink on if disabled": {
+			// off twice in 1 second: 0-off, 600-off...
+			rates: map[int]blink{
+				heartbeat: {on: 0, off: 600 * time.Millisecond},
+			},
+			calls: []gpio.Level{gpio.Low, gpio.Low},
+		},
+
+		"blinks once when allowed": { // as long as allowedTime is smaller than the total allowed blink period.
+			// on for half a second: 0-off, 50-Allow, 50-on, 300-on, 550-off, 650-off, 750-off, 850-off, 950-off...
+			allowedTime: 500 * time.Millisecond,
+			rates: map[int]blink{
+				heartbeat: {on: 0, off: 100 * time.Millisecond},
+				allowed:   {on: 250 * time.Millisecond, off: 0},
+			},
+			inputs: []input{
+				{after: 50 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
+			},
+			calls: []gpio.Level{gpio.Low, gpio.High, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.Low, gpio.Low},
 		},
 
 		"blinks once when allowed several times quickly": {
-			calls: func(l *LED, m *LEDmock) {
-				// Re-turns the light on each time
-				m.On("Out", gpio.High).Return(nil).Times(4)
-				// Turns it off once when returning to heartbeat
-				m.On("Out", gpio.Low).Return(nil).Once()
-
-				_ = l.Allow(context.Background(), "Welcome back Bracken")
-				_ = l.Allow(context.Background(), "Welcome back Bracken")
-				_ = l.Allow(context.Background(), "Welcome back Bracken")
-				_ = l.Allow(context.Background(), "Welcome back Bracken")
-
-				time.Sleep(50 * time.Millisecond)
+			// on for half a second: 0-off, 50-Allow, 50-on, 80-Allow, 80-on, 110-Allow, 110-on, 360-on, 610-off, 710-off, 810-off, 910-off...
+			allowedTime: 500 * time.Millisecond,
+			rates: map[int]blink{
+				heartbeat: {on: 0, off: 100 * time.Millisecond},
+				allowed:   {on: 250 * time.Millisecond, off: 0},
 			},
+			inputs: []input{
+				{after: 50 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
+				{after: 80 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
+				{after: 110 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
+			},
+			calls: []gpio.Level{gpio.Low, gpio.High, gpio.High, gpio.High, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.Low},
 		},
 
 		"does not blink when denied": {
-			calls: func(l *LED, m *LEDmock) {
-				_ = l.Deny(context.Background(), "Go away", errors.New("nah mon"))
-				// one extra call to off on return to heartbeat
-				m.On("Out", gpio.Low).Return(nil).Twice()
-
-				time.Sleep(50 * time.Millisecond)
+			// blinks evey 100 except a 500 gap: 0-on, 10-off, 110-on, 120-off, 200-Deny, 200-off, 450-off, 700-on, 710-off, 810-on, 820-off, 920-on, 930-off...
+			deniedTime: 500 * time.Millisecond,
+			rates: map[int]blink{
+				heartbeat: {on: 10 * time.Millisecond, off: 100 * time.Millisecond},
+				denied:    {on: 0, off: 250 * time.Millisecond},
 			},
+			inputs: []input{
+				{after: 200 * time.Millisecond, do: func(l *LED) { _ = l.Deny(context.Background(), "nah", errors.New("said no")) }},
+			},
+			calls: []gpio.Level{gpio.High, gpio.Low, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.High, gpio.Low, gpio.High, gpio.Low, gpio.High, gpio.Low},
 		},
 
 		"blinks until context is cancelled on interrogating": {
-			calls: func(l *LED, m *LEDmock) {
-				ctx, cancel := context.WithCancel(context.Background())
-
-				m.On("Out", gpio.High).Return(nil).Times(3)
-				m.On("Out", gpio.Low).Return(nil).Times(3)
-				m.On("Out", gpio.High).Run(func(mock.Arguments) { cancel() }).Return(nil).Once()
-				// 		// one extra call to off on return to heartbeat
-				m.On("Out", gpio.Low).Return(nil).Twice()
-
-				l.Interrogating(ctx, "checking...")
-
-				time.Sleep(50 * time.Millisecond)
+			// blinks 3 times fast: 0-off, 100-off, 180-Interrogating(230), 180-on, 230-off, 280-on, 330-off, 380-on, 410-off, 510-off, 610-off, 710-off, 810-off, 910-off...
+			rates: map[int]blink{
+				heartbeat:     {on: 0, off: 100 * time.Millisecond},
+				interrogating: {on: 50 * time.Millisecond, off: 50 * time.Millisecond},
 			},
+			inputs: []input{
+				{after: 180 * time.Millisecond, do: func(l *LED) {
+					ctx, _ := context.WithTimeout(context.Background(), 230*time.Millisecond)
+					l.Interrogating(ctx, "checking...")
+				}},
+			},
+			calls: []gpio.Level{gpio.Low, gpio.Low, gpio.High, gpio.Low, gpio.High, gpio.Low, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.Low, gpio.Low, gpio.Low},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			mockLED := &LEDmock{}
-			mockLED.Test(t)
-			defer mockLED.AssertExpectations(t)
-			defer func(p Pin) { l.pin = p }(l.pin)
-			l.pin = mockLED
+			start := time.Now()
+			pin := &pinMock{
+				t:     t,
+				start: start,
+			}
+			pin.Test(t)
+			defer pin.AssertExpectations(t)
+			defer func() { assertCallOrder(t, pin.Calls, test.calls) }()
+			for _, level := range test.calls {
+				pin.On("Out", level).Return(nil).Once()
+			}
 
-			test.calls(l, mockLED)
+			l := &LED{
+				allowedTime: test.allowedTime,
+				deniedTime:  test.deniedTime,
+				rate:        test.rates,
+				pin:         pin,
+				wake:        make(chan struct{}),
+			}
 
-			l.lastAllow = time.Now().Add(-time.Hour)
-			l.lastDeny = time.Now().Add(-time.Hour)
+			// do the inputs at the right times
+			go func(inputs []input) {
+				for {
+					inputsLeft := false
+					for i := range inputs {
+						if inputs[i].done {
+							continue
+						}
+						inputsLeft = true
+						if time.Since(start) < inputs[i].after {
+							continue
+						}
+						inputs[i].do(l)
+						inputs[i].done = true
+					}
+					if !inputsLeft {
+						break
+					}
+				}
+			}(test.inputs)
+
+			// runs for 1 second
+			for time.Since(start) < time.Second {
+				l.loop()
+			}
 		})
 	}
 }
 
-func TestLEDIsAdmitter(t *testing.T) {
-	var _ admitter.Admitter = &LED{}
+func assertCallOrder(t *testing.T, calls []mock.Call, expected []gpio.Level) {
+	assert.Len(t, calls, len(expected), "Wrong number of calls to Out(), got %d, want %d.", len(calls), len(expected))
+	for i := range expected {
+		assert.Equal(t, expected[i], calls[i].Arguments[0], "Call %d should be %v, got %v", i, expected[i], calls[i].Arguments[0])
+	}
 }
 
-type LEDmock struct {
+type pinMock struct {
+	t     *testing.T
+	start time.Time
 	mock.Mock
 }
 
-func (l *LEDmock) Out(level gpio.Level) error {
-	return l.Called(level).Error(0)
-}
-
-type LEDstub struct {
-	called bool
-}
-
-func (l *LEDstub) Out(level gpio.Level) error {
-	l.called = true
-	return nil
+func (p *pinMock) Out(level gpio.Level) error {
+	p.t.Log(level, time.Since(p.start))
+	return p.Called(level).Error(0)
 }

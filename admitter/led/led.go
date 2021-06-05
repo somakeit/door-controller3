@@ -20,15 +20,15 @@ const (
 	interrogating
 	allowed
 	denied
+
+	defaultAllowedTime = time.Second
+	defaultDeniedTime  = time.Second
 )
 
 var (
-	allowedTime = time.Second
-	deniedTime  = time.Second
-
-	// rate maps led state to blink pattern. Every pattern must have one non-zero
+	// defaultRates maps led state to blink pattern. Every pattern must have one non-zero
 	// duration
-	rate = map[int]blink{
+	defaultRates = map[int]blink{
 		heartbeat:     {50 * time.Millisecond, 4950 * time.Millisecond},
 		interrogating: {50 * time.Millisecond, 50 * time.Millisecond},
 		allowed:       {time.Second, 0},
@@ -43,6 +43,9 @@ type Pin interface {
 
 // LED is an Admitter that impliments a status LED
 type LED struct {
+	allowedTime, deniedTime time.Duration
+	rate                    map[int]blink
+
 	pin Pin
 
 	mux           sync.Mutex
@@ -55,6 +58,10 @@ type LED struct {
 // New returns a started LED
 func New(led Pin) *LED {
 	l := &LED{
+		allowedTime: defaultAllowedTime,
+		deniedTime:  defaultDeniedTime,
+		rate:        defaultRates,
+
 		pin:  led,
 		wake: make(chan struct{}),
 	}
@@ -63,10 +70,14 @@ func New(led Pin) *LED {
 }
 
 func (l *LED) Interrogating(ctx context.Context, msg string) {
+	l.mux.Lock()
 	l.interrogating = true
+	l.mux.Unlock()
 	go func() {
 		<-ctx.Done()
+		l.mux.Lock()
 		l.interrogating = false
+		l.mux.Unlock()
 	}()
 	l.poke()
 }
@@ -90,30 +101,34 @@ func (l *LED) Allow(ctx context.Context, msg string) error {
 // run is the background thread for LED
 func (l *LED) run() {
 	for {
-		blink := rate[l.state()]
+		l.loop()
+	}
+}
 
-		if blink.on > 0 {
-			timer := time.NewTimer(blink.on)
-			_ = l.pin.Out(gpio.High)
-			select {
-			case <-timer.C:
-			case <-l.wake:
-				// stopping the timer prevents an adversary from growing a
-				// gorouting horde by getting denied repeatedly.
-				timer.Stop()
-				continue
-			}
+func (l *LED) loop() {
+	blink := l.rate[l.state()]
+
+	if blink.on > 0 {
+		timer := time.NewTimer(blink.on)
+		_ = l.pin.Out(gpio.High)
+		select {
+		case <-timer.C:
+		case <-l.wake:
+			// stopping the timer prevents an adversary from growing a
+			// gorouting horde by getting denied repeatedly.
+			timer.Stop()
+			return
 		}
+	}
 
-		if blink.off > 0 {
-			timer := time.NewTimer(blink.off)
-			_ = l.pin.Out(gpio.Low)
-			select {
-			case <-timer.C:
-			case <-l.wake:
-				timer.Stop()
-				continue
-			}
+	if blink.off > 0 {
+		timer := time.NewTimer(blink.off)
+		_ = l.pin.Out(gpio.Low)
+		select {
+		case <-timer.C:
+		case <-l.wake:
+			timer.Stop()
+			return
 		}
 	}
 }
@@ -128,11 +143,11 @@ func (l *LED) state() int {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 	switch {
-	case time.Since(l.lastAllow) < allowedTime:
+	case time.Since(l.lastAllow) < l.allowedTime:
 		return allowed
 	case l.interrogating:
 		return interrogating
-	case time.Since(l.lastDeny) < deniedTime:
+	case time.Since(l.lastDeny) < l.deniedTime:
 		return denied
 	}
 	return heartbeat
