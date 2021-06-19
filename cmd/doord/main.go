@@ -107,7 +107,7 @@ Required raspberry pi pins:
 		locked = gpio.High
 	}
 	if err := rpi.P1_15.Out(locked); err != nil {
-		log.Fatal("Failed to pre-lock door")
+		log.Fatal("Failed to pre-lock door: ", err)
 	}
 
 	doorStrike := strike.New(rpi.P1_15)
