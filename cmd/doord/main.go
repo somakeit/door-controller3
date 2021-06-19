@@ -17,6 +17,7 @@ import (
 	"github.com/somakeit/door-controller3/guard"
 	"github.com/somakeit/door-controller3/guard/nfc"
 	"github.com/somakeit/door-controller3/guard/pin"
+	"periph.io/x/conn/v3/gpio"
 	"periph.io/x/conn/v3/spi/spireg"
 	"periph.io/x/devices/v3/mfrc522"
 	"periph.io/x/host/v3"
@@ -99,6 +100,14 @@ Required raspberry pi pins:
 	auth, err := hms.NewClient(db)
 	if err != nil {
 		log.Fatal("Failed to init hms:, ", err)
+	}
+
+	locked := gpio.Low
+	if !*activeHigh {
+		locked = gpio.High
+	}
+	if err := rpi.P1_15.Out(locked); err != nil {
+		log.Fatal("Failed to pre-lock door")
 	}
 
 	doorStrike := strike.New(rpi.P1_15)
