@@ -14,7 +14,9 @@ import (
 	"github.com/somakeit/door-controller3/admitter/strike"
 	"github.com/somakeit/door-controller3/auth/hms"
 	"github.com/somakeit/door-controller3/contextlogger"
-	"github.com/somakeit/door-controller3/nfc"
+	"github.com/somakeit/door-controller3/guard"
+	"github.com/somakeit/door-controller3/guard/nfc"
+	"github.com/somakeit/door-controller3/guard/pin"
 	"periph.io/x/conn/v3/spi/spireg"
 	"periph.io/x/devices/v3/mfrc522"
 	"periph.io/x/host/v3"
@@ -111,11 +113,19 @@ Required raspberry pi pins:
 		ctxLog,
 	}
 
-	guard, err := nfc.New(int32(*door), *side, reader, auth, admitters)
+	strikeGuard, err := nfc.New(int32(*door), *side, reader, auth, admitters)
 	if err != nil {
 		log.Fatal("Failed to init guard: ", err)
 	}
 
+	pin.Logger = ctxLog
+	pinGuard := pin.New(os.Stdin, auth, int32(*door), *side)
+
+	g := guard.Mux{
+		strikeGuard,
+		pinGuard,
+	}
+
 	log.Info("Ready")
-	log.Fatal(guard.Guard())
+	log.Fatal(g.Guard())
 }

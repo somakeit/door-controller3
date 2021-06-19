@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -12,7 +13,9 @@ import (
 	"github.com/somakeit/door-controller3/admitter/strike"
 	"github.com/somakeit/door-controller3/auth/staticauth"
 	"github.com/somakeit/door-controller3/contextlogger"
-	"github.com/somakeit/door-controller3/nfc"
+	"github.com/somakeit/door-controller3/guard"
+	"github.com/somakeit/door-controller3/guard/nfc"
+	"github.com/somakeit/door-controller3/guard/pin"
 	"periph.io/x/conn/v3/spi/spireg"
 	"periph.io/x/devices/v3/mfrc522"
 	"periph.io/x/host/v3"
@@ -63,10 +66,15 @@ func main() {
 		ctxLog,
 	}
 
-	guard, err := nfc.New(1, "A", reader, auth, admitters)
+	strikeGuard, err := nfc.New(1, "A", reader, auth, admitters)
 	if err != nil {
 		log.Fatal("Failed to init guard: ", err)
 	}
 
-	log.Fatal(guard.Guard())
+	pinGuard := pin.New(os.Stdin, auth, 1, "A")
+
+	log.Fatal(guard.Mux{
+		strikeGuard,
+		pinGuard,
+	})
 }
