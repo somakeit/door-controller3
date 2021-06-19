@@ -13,6 +13,14 @@ type ContextLogger struct {
 	Logger *logrus.Logger
 }
 
+func (c *ContextLogger) Info(ctx context.Context, args ...interface{}) {
+	c.Logger.WithFields(c.fields(ctx)).Info(args...)
+}
+
+func (c *ContextLogger) Error(ctx context.Context, args ...interface{}) {
+	c.Logger.WithFields(c.fields(ctx)).Info(args...)
+}
+
 func (c *ContextLogger) Fatal(ctx context.Context, args ...interface{}) {
 	c.Logger.WithFields(c.fields(ctx)).Fatal(args...)
 }
