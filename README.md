@@ -8,8 +8,8 @@ HMS2 members area software.
 * 1  - MFRC522_3V3
 * 6  - MFRC522_Ground
 * 15 - Door strike/latch
-* 16 - LED
-* 18 - MFRC522_IRQ
+* 16 - MFRC522_IRQ
+* 18 - LED
 * 19 - MFRC522_MOSI
 * 21 - MFRC522_MISO
 * 22 - MFRC522_RST

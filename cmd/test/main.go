@@ -47,7 +47,7 @@ func main() {
 		log.Fatal("Failed to open SPI: ", err)
 	}
 
-	reader, err := mfrc522.NewSPI(spi, rpi.P1_22, rpi.P1_18)
+	reader, err := mfrc522.NewSPI(spi, rpi.P1_22, rpi.P1_16)
 	if err != nil {
 		log.Fatal("Failed to init reader: ", err)
 	}
@@ -62,7 +62,7 @@ func main() {
 
 	admitters := admitter.Mux{
 		strike.New(rpi.P1_15),
-		led.New(rpi.P1_16),
+		led.New(rpi.P1_18),
 		ctxLog,
 	}
 
@@ -76,5 +76,5 @@ func main() {
 	log.Fatal(guard.Mux{
 		strikeGuard,
 		pinGuard,
-	})
+	}.Guard())
 }

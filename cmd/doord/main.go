@@ -34,8 +34,8 @@ Required raspberry pi pins:
   1  - MFRC522_3V3
   6  - MFRC522_Ground
   15 - Door strike/latch
-  16 - LED
-  18 - MFRC522_IRQ
+  16 - MFRC522_IRQ
+  18 - LED
   19 - MFRC522_MOSI
   21 - MFRC522_MISO
   22 - MFRC522_RST
@@ -83,7 +83,7 @@ Required raspberry pi pins:
 		log.Fatal("Failed to open SPI: ", err)
 	}
 
-	reader, err := mfrc522.NewSPI(spi, rpi.P1_22, rpi.P1_18)
+	reader, err := mfrc522.NewSPI(spi, rpi.P1_22, rpi.P1_16)
 	if err != nil {
 		log.Fatal("Failed to init reader: ", err)
 	}
@@ -118,7 +118,7 @@ Required raspberry pi pins:
 
 	admitters := admitter.Mux{
 		doorStrike,
-		led.New(rpi.P1_16),
+		led.New(rpi.P1_18),
 		ctxLog,
 	}
 
