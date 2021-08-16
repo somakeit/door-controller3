@@ -25,10 +25,15 @@ import (
 func main() {
 	tags := flag.String("tags", "", "Comma separated list of allowed tags")
 	level := flag.String("loglevel", "debug", "log level")
+	gain := flag.Int("gain", 7, "antenna gain 0 to 7")
 	flag.Parse()
 	logLevel, err := logrus.ParseLevel(*level)
 	if err != nil {
 		log.Fatal("Invalid log level: ", err)
+	}
+
+	if *gain < 0 || *gain > 7 {
+		log.Fatal("Invalid antenna gain.")
 	}
 
 	log := logrus.StandardLogger()
@@ -51,6 +56,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to init reader: ", err)
 	}
+	reader.SetAntennaGain(*gain)
 
 	auth := &staticauth.Static{
 		Delay: 2 * time.Second,

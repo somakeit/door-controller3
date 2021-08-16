@@ -49,6 +49,7 @@ Required raspberry pi pins:
 	openTime := flag.Int("opentime", 5, "Number of seconds to open the door for")
 	activeHigh := flag.Bool("activehigh", true, "Strike/latch logic level")
 	level := flag.String("loglevel", "info", "log level")
+	gain := flag.Int("gain", 7, "Antenna gain 0 to 7")
 	flag.Parse()
 	logLevel, err := logrus.ParseLevel(*level)
 	if err != nil {
@@ -63,6 +64,11 @@ Required raspberry pi pins:
 	}
 	if *side != "A" && *side != "B" {
 		fmt.Println("Invalid side, a side of either 'A' or 'B' must be provided")
+		flag.Usage()
+		os.Exit(2)
+	}
+	if *gain < 0 || *gain > 7 {
+		fmt.Println("Invalid antenna gain, must be 0 to 7")
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -87,6 +93,7 @@ Required raspberry pi pins:
 	if err != nil {
 		log.Fatal("Failed to init reader: ", err)
 	}
+	reader.SetAntennaGain(*gain)
 
 	db, err := sql.Open("mysql", *dsn)
 	if err != nil {
