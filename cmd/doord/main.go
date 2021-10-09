@@ -48,6 +48,7 @@ Required raspberry pi pins:
 	dsn := flag.String("hms", "", "The DSN for the HMS mysql database as per the Go database/sql package, eg: 'username:password@(host)/database'")
 	openTime := flag.Int("opentime", 5, "Number of seconds to open the door for")
 	activeHigh := flag.Bool("activehigh", true, "Strike/latch logic level")
+	logFile := flag.String("logfile", "/var/log/doord/access.log", "Log file to use or - for STDOUT")
 	level := flag.String("loglevel", "info", "log level")
 	gain := flag.Int("gain", 7, "Antenna gain 0 to 7")
 	flag.Parse()
@@ -78,6 +79,14 @@ Required raspberry pi pins:
 	log.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
+	if *logFile != "-" {
+		file, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0640)
+		if err != nil {
+			log.Fatal("Cannot open log file: ", err)
+		}
+		defer file.Close()
+		log.Out = file
+	}
 	log.Info("Stating doord")
 
 	if _, err := host.Init(); err != nil {
