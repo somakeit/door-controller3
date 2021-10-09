@@ -50,7 +50,7 @@ Required raspberry pi pins:
 	activeHigh := flag.Bool("activehigh", true, "Strike/latch logic level")
 	logFile := flag.String("logfile", "/var/log/doord/access.log", "Log file to use or - for STDOUT")
 	level := flag.String("loglevel", "info", "log level")
-	gain := flag.Int("gain", 7, "Antenna gain 0 to 7")
+	gain := flag.Int("gain", 5, "Antenna gain 0 to 7")
 	flag.Parse()
 	logLevel, err := logrus.ParseLevel(*level)
 	if err != nil {
