@@ -1,5 +1,6 @@
 [Unit]
 Description=So Make It Door Controller 3
+After=network.target
 
 [Service]
 User=doord
