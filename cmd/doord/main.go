@@ -80,7 +80,7 @@ Required raspberry pi pins:
 		FullTimestamp: true,
 	})
 	if *logFile != "-" {
-		file, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0640)
+		file, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			log.Fatal("Cannot open log file: ", err)
 		}
