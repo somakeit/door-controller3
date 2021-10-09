@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	strUID    = "0001f680"
-	rawUID    = []byte{0x00, 0x01, 0xf6, 0x80}
-	strAltUID = "0001f4a9"
+	strUID = "0001f680"
+	rawUID = []byte{0x00, 0x01, 0xf6, 0x80}
+	// strAltUID = "0001f4a9"
 	rawAltUID = []byte{0x00, 0x01, 0xf4, 0xa9}
 )
 
