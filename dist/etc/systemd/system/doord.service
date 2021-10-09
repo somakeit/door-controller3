@@ -1,0 +1,14 @@
+[Unit]
+Description=So Make It Door Controller 3
+
+[Service]
+User=doord
+Group=doord
+Type=simple
+ExecStart=/usr/local/bin/doord -door 1 -side A -hms 'username:password@(host)/database'
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+
+[Install]
+WantedBy=multi-user.target

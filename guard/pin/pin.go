@@ -65,6 +65,7 @@ func (g *Guard) Guard() error {
 func (g *Guard) guard() error {
 	ctx := context.Background()
 
+	fmt.Print("Enter pin: ")
 	pin, err := g.in.ReadString('\n')
 	if err != nil {
 		Logger.Error(ctx, "Error reading pin: ", err)
