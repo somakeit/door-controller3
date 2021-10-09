@@ -84,7 +84,8 @@ func TestGuard(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			readerDobule := &testNFC{}
 			readerDobule.Test(t)
-			readerDobule.On("ReadUID", 100*time.Millisecond).Return(rawUID, test.readErr)
+			// The reader returns an extra byte, here x.
+			readerDobule.On("ReadUID", 100*time.Millisecond).Return(append(rawUID, 'x'), test.readErr)
 			authDouble := &testAuth{}
 			authDouble.Test(t)
 			authDouble.On("Allowed", mock.MatchedBy(contextWithUIDAndFields(t, strUID)), int32(7), "B", strUID).Return(test.allow, test.allowMsg, test.allowErr)
