@@ -7,10 +7,13 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/somakeit/door-controller3/admitter"
 )
 
 const (
 	pinTimeout = 30 * time.Second
+	guardType  = "pin"
 )
 
 // Logger can be used to interface any logger to this package, by default
@@ -64,6 +67,9 @@ func (g *Guard) Guard() error {
 
 func (g *Guard) guard() error {
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, admitter.Door, g.door)
+	ctx = context.WithValue(ctx, admitter.Side, g.side)
+	ctx = context.WithValue(ctx, admitter.Type, guardType)
 
 	fmt.Print("Enter pin: ")
 	pin, err := g.in.ReadString('\n')
@@ -76,6 +82,7 @@ func (g *Guard) guard() error {
 		return nil
 	}
 
+	ctx = context.WithValue(ctx, admitter.ID, pin)
 	ctx, cancel := context.WithTimeout(ctx, pinTimeout)
 	defer cancel()
 	msg, err := g.hms.CheckPIN(ctx, g.door, g.side, pin)

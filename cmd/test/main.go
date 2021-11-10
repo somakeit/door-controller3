@@ -78,6 +78,7 @@ func main() {
 		log.Fatal("Failed to init guard: ", err)
 	}
 
+	pin.Logger = ctxLog
 	pinGuard := pin.New(os.Stdin, auth, 1, "A")
 
 	log.Fatal(guard.Mux{
