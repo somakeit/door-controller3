@@ -13,6 +13,7 @@ import (
 const (
 	defaultReadTimeoutMS = 100
 	defaultAuthTimeoutS  = 30
+	defaultCanelTimeoutS = 5
 	guardType            = "nfc"
 )
 
@@ -38,19 +39,23 @@ type Guard struct {
 	// this time elapses before authorization is granted, then admission will
 	// be denied. The default is 30 seconds.
 	AuthTimeout time.Duration
+	// CancelTimeout is the durition that a tag must be absent from the reader
+	// before an in-progress auth operation is cancelled.
+	CancelTimeout time.Duration
 }
 
 // New returs a new Guard, door is the id of this door, side of door is usually
 // "A" or "B", reader is an instance of an NFC/RFID reader.
 func New(door int32, side string, reader UIDReader, authority auth.Authorizer, gate admitter.Admitter) (*Guard, error) {
 	return &Guard{
-		door:        door,
-		side:        side,
-		reader:      reader,
-		auth:        authority,
-		gate:        gate,
-		ReadTimeout: defaultReadTimeoutMS * time.Millisecond,
-		AuthTimeout: defaultAuthTimeoutS * time.Second,
+		door:          door,
+		side:          side,
+		reader:        reader,
+		auth:          authority,
+		gate:          gate,
+		ReadTimeout:   defaultReadTimeoutMS * time.Millisecond,
+		AuthTimeout:   defaultAuthTimeoutS * time.Second,
+		CancelTimeout: defaultCanelTimeoutS * time.Second,
 	}, nil
 }
 
@@ -94,14 +99,24 @@ func (g *Guard) guard() error {
 	go func() {
 		defer close(bgScan)
 
+		lastSeen := time.Now()
+
 		for {
 			if ctx.Err() != nil {
 				break
 			}
 			rawUID, err := g.reader.ReadUID(g.ReadTimeout)
 			if err != nil || uid != hex.EncodeToString(rawUID) {
+				// Either the tag is gone or there was a read error, show the
+				// authentee some kindness and only cancel them if this
+				// continues to be the case for a short time
+				if !(time.Since(lastSeen) > g.CancelTimeout) {
+					continue
+				}
 				cancel()
+				return
 			}
+			lastSeen = time.Now()
 		}
 	}()
 

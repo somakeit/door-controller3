@@ -144,10 +144,12 @@ func TestGuardFatal(t *testing.T) {
 			authDouble.On("Allowed", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.auth, "", test.authErr)
 
 			nfc := &Guard{
-				reader:      readerDobule,
-				auth:        authDouble,
-				gate:        admitDouble,
-				ReadTimeout: 100 * time.Millisecond,
+				reader:        readerDobule,
+				auth:          authDouble,
+				gate:          admitDouble,
+				ReadTimeout:   100 * time.Millisecond,
+				AuthTimeout:   time.Second,
+				CancelTimeout: 200 * time.Millisecond,
 			}
 
 			require.Error(t, nfc.Guard())
@@ -192,11 +194,12 @@ func TestGuardUserCancel(t *testing.T) {
 			}).Return(false, "", errors.New("context cancelled"))
 
 			nfc := &Guard{
-				reader:      readerDobule,
-				auth:        authDouble,
-				gate:        mockAdmit,
-				ReadTimeout: 100 * time.Millisecond,
-				AuthTimeout: 30 * time.Second,
+				reader:        readerDobule,
+				auth:          authDouble,
+				gate:          mockAdmit,
+				ReadTimeout:   100 * time.Millisecond,
+				AuthTimeout:   30 * time.Second,
+				CancelTimeout: 200 * time.Millisecond,
 			}
 
 			require.NoError(t, nfc.guard())
