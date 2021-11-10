@@ -63,19 +63,9 @@ func (g *Guard) Guard() error {
 	}
 }
 
-// ReadUID gets the UID from the reader, right now it always returns an extra
-// byte and I don't know why so I'm stripping that off.
-func (g *Guard) readUID(timeout time.Duration) ([]byte, error) {
-	uid, err := g.reader.ReadUID(g.ReadTimeout)
-	if err != nil {
-		return uid, err
-	}
-	return uid[:len(uid)-1], err
-}
-
 // guard is one iteration of the Guard loop
 func (g *Guard) guard() error {
-	rawUID, err := g.readUID(g.ReadTimeout)
+	rawUID, err := g.reader.ReadUID(g.ReadTimeout)
 	if err != nil {
 		// There was no tag, or we couldn't read the tag
 		g.lastTag = ""
@@ -108,7 +98,7 @@ func (g *Guard) guard() error {
 			if ctx.Err() != nil {
 				break
 			}
-			rawUID, err := g.readUID(g.ReadTimeout)
+			rawUID, err := g.reader.ReadUID(g.ReadTimeout)
 			if err != nil || uid != hex.EncodeToString(rawUID) {
 				cancel()
 			}
