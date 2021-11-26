@@ -57,7 +57,9 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to init reader: ", err)
 	}
-	reader.SetAntennaGain(*gain)
+	if err := reader.SetAntennaGain(*gain); err != nil {
+		log.Fatal("Failed to set antenna gain: ", err)
+	}
 
 	auth := &staticauth.Static{
 		Delay: *delay,

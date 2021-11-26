@@ -14,7 +14,7 @@ import (
 func TestLED(t *testing.T) {
 	type input struct {
 		after time.Duration
-		do    func(*LED)
+		do    func(*testing.T, *LED)
 		done  bool
 	}
 	for name, test := range map[string]struct {
@@ -47,7 +47,7 @@ func TestLED(t *testing.T) {
 				allowed:   {on: 250 * time.Millisecond, off: 0},
 			},
 			inputs: []input{
-				{after: 50 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
+				{after: 50 * time.Millisecond, do: func(t *testing.T, l *LED) { _ = l.Allow(context.Background(), "yea") }},
 			},
 			calls: []gpio.Level{gpio.Low, gpio.High, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.Low, gpio.Low},
 		},
@@ -60,9 +60,9 @@ func TestLED(t *testing.T) {
 				allowed:   {on: 250 * time.Millisecond, off: 0},
 			},
 			inputs: []input{
-				{after: 50 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
-				{after: 80 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
-				{after: 110 * time.Millisecond, do: func(l *LED) { _ = l.Allow(context.Background(), "yea") }},
+				{after: 50 * time.Millisecond, do: func(t *testing.T, l *LED) { _ = l.Allow(context.Background(), "yea") }},
+				{after: 80 * time.Millisecond, do: func(t *testing.T, l *LED) { _ = l.Allow(context.Background(), "yea") }},
+				{after: 110 * time.Millisecond, do: func(t *testing.T, l *LED) { _ = l.Allow(context.Background(), "yea") }},
 			},
 			calls: []gpio.Level{gpio.Low, gpio.High, gpio.High, gpio.High, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.Low},
 		},
@@ -75,7 +75,7 @@ func TestLED(t *testing.T) {
 				denied:    {on: 0, off: 250 * time.Millisecond},
 			},
 			inputs: []input{
-				{after: 200 * time.Millisecond, do: func(l *LED) { _ = l.Deny(context.Background(), "nah", errors.New("said no")) }},
+				{after: 200 * time.Millisecond, do: func(t *testing.T, l *LED) { _ = l.Deny(context.Background(), "nah", errors.New("said no")) }},
 			},
 			calls: []gpio.Level{gpio.High, gpio.Low, gpio.High, gpio.Low, gpio.Low, gpio.Low, gpio.High, gpio.Low, gpio.High, gpio.Low, gpio.High, gpio.Low},
 		},
@@ -87,8 +87,9 @@ func TestLED(t *testing.T) {
 				interrogating: {on: 50 * time.Millisecond, off: 50 * time.Millisecond},
 			},
 			inputs: []input{
-				{after: 180 * time.Millisecond, do: func(l *LED) {
-					ctx, _ := context.WithTimeout(context.Background(), 230*time.Millisecond)
+				{after: 180 * time.Millisecond, do: func(t *testing.T, l *LED) {
+					ctx, cancel := context.WithTimeout(context.Background(), 230*time.Millisecond)
+					t.Cleanup(cancel)
 					l.Interrogating(ctx, "checking...")
 				}},
 			},
@@ -128,7 +129,7 @@ func TestLED(t *testing.T) {
 						if time.Since(start) < inputs[i].after {
 							continue
 						}
-						inputs[i].do(l)
+						inputs[i].do(t, l)
 						inputs[i].done = true
 					}
 					if !inputsLeft {
