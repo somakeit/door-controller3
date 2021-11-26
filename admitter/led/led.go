@@ -78,6 +78,7 @@ func (l *LED) Interrogating(ctx context.Context, msg string) {
 		l.mux.Lock()
 		l.interrogating = false
 		l.mux.Unlock()
+		l.poke()
 	}()
 	l.poke()
 }
