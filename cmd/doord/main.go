@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 	"github.com/somakeit/door-controller3/admitter"
 	"github.com/somakeit/door-controller3/admitter/led"
@@ -104,6 +104,7 @@ Required raspberry pi pins:
 	}
 	reader.SetAntennaGain(*gain)
 
+	mysql.SetLogger(log)
 	db, err := sql.Open("mysql", *dsn)
 	if err != nil {
 		log.Fatal("Failed to open database: ", err)
