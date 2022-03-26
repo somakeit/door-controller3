@@ -88,7 +88,10 @@ func (g *Guard) guard() error {
 	msg, err := g.hms.CheckPIN(ctx, g.door, g.side, pin)
 	if err != nil {
 		Logger.Error(ctx, "PIN check failed: ", err)
+		fmt.Println("PIN check failed:", err)
+		return nil
 	}
-	Logger.Info(ctx, "PIN checked: ", msg)
+	Logger.Info(ctx, "PIN OK: ", msg)
+	fmt.Println("PIN OK")
 	return nil
 }
