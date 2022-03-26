@@ -92,6 +92,6 @@ func (g *Guard) guard() error {
 		return nil
 	}
 	Logger.Info(ctx, "PIN OK: ", msg)
-	fmt.Println("PIN OK")
+	fmt.Println("PIN OK:", msg)
 	return nil
 }
