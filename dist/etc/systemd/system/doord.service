@@ -10,6 +10,7 @@ ExecStart=/usr/local/bin/doord -door 1 -side A -hms 'username:password@(host)/da
 StandardInput=tty
 StandardOutput=tty
 TTYPath=/dev/tty1
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
