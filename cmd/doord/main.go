@@ -47,7 +47,7 @@ Required raspberry pi pins:
 	side := flag.String("side", "", "Door side, 'A' or 'B'")
 	dsn := flag.String("hms", "", "The DSN for the HMS mysql database as per the Go database/sql package, eg: 'username:password@(host)/database'")
 	openTime := flag.Int("opentime", 5, "Number of seconds to open the door for")
-	activeHigh := flag.Bool("activehigh", true, "Strike/latch logic level")
+	activeLow := flag.Bool("activelow", false, "Strike/latch logic level")
 	logFile := flag.String("logfile", "/var/log/doord/access.log", "Log file to use or - for STDOUT")
 	level := flag.String("loglevel", "info", "log level")
 	gain := flag.Int("gain", 5, "Antenna gain 0 to 7")
@@ -124,7 +124,7 @@ Required raspberry pi pins:
 	}
 
 	locked := gpio.Low
-	if !*activeHigh {
+	if *activeLow {
 		locked = gpio.High
 	}
 	if err := rpi.P1_15.Out(locked); err != nil {
@@ -133,7 +133,7 @@ Required raspberry pi pins:
 
 	doorStrike := strike.New(rpi.P1_15)
 	doorStrike.OpenFor = time.Duration(*openTime) * time.Second
-	if !*activeHigh {
+	if *activeLow {
 		doorStrike.Logic = strike.ActiveLow
 	}
 
