@@ -24,7 +24,7 @@ HMS2 members area software.
    1. Install openvpn on the host.
    2. Generate a new client key for the host on the HMS server, this is normally done using [openvpn-install](https://github.com/angristan/openvpn-install).
    3. The configuration generated is for full-tunnel but we need split-tunel, add `route-nopull` to the config file on a new line just before the certificates.
-   4. Copy the generated openvpn config to the host at `/etc/openvpn/<name>.conf`, make sure the extension is `.conf`.
+   4. Copy the generated openvpn config to the host at `/etc/openvpn/client.conf`, make sure the extension is `.conf`.
    5. Restart openvpn `sudo systemctl restart openvpn` (if this doesn't pick up the config just try a reboot).
    6. Test the connection to the database: `nc -zv 10.8.0.1 3306`.
 5. Build the door controller (this repo):
